@@ -32,4 +32,15 @@ public class RequirementListItemResponse
     public string? CoverImagePath { get; set; }
 
     public DateTime CreatedAt { get; set; }
+
+    public List<RequirementSummaryFieldResponse> SummaryFields { get; set; } = new();
+}
+
+public class RequirementSummaryFieldResponse
+{
+    public string FieldKey { get; set; } = string.Empty;
+
+    public string Label { get; set; } = string.Empty;
+
+    public string Value { get; set; } = string.Empty;
 }

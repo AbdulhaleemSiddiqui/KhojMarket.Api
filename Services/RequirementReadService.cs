@@ -328,6 +328,33 @@ public class RequirementReadService
                     InquiryCount =
                         x.Inquiries.Count(),
 
+                    SummaryFields =
+                        x.Fields
+                            .Where(field =>
+                                field.Value != null &&
+                                field.Value != "")
+                            .OrderBy(field =>
+                                field.FieldKey == "quantity" ||
+                                field.FieldKey == "qty"
+                                    ? 0
+                                    : 1)
+                            .ThenBy(field =>
+                                field.SortOrder)
+                            .Take(1)
+                            .Select(field =>
+                                new RequirementSummaryFieldResponse
+                                {
+                                    FieldKey =
+                                        field.FieldKey,
+
+                                    Label =
+                                        field.Label,
+
+                                    Value =
+                                        field.Value
+                                })
+                            .ToList(),
+
                     CreatedAt =
                         x.CreatedAt
                 })
