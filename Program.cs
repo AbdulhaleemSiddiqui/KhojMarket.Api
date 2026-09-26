@@ -153,6 +153,7 @@ builder.Services.AddScoped<MarketplaceDealService>();
 builder.Services.AddScoped<MarketplaceReviewService>();
 builder.Services.AddScoped<SellerVerificationService>();
 builder.Services.AddScoped<AdminDashboardService>();
+builder.Services.AddHttpClient<IAiRequirementService, OpenAiRequirementService>();
 builder.Services.AddHealthChecks();
 builder.Services.AddScoped<
     IBuyerInquiryNotificationService,
