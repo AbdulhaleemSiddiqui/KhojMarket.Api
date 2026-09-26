@@ -219,28 +219,42 @@ public class RequirementLifecycleService
         requirement.Area = request.Area?.Trim();
         requirement.PostalCode = request.PostalCode?.Trim();
 
-        _dbContext.RequirementFields.RemoveRange(
-            requirement.Fields);
+        var existingFields =
+     requirement.Fields.ToList();
 
-        requirement.Fields.Clear();
+        if (existingFields.Count > 0)
+        {
+            _dbContext.RequirementFields.RemoveRange(
+                existingFields);
+        }
 
         var fields =
             request.Fields ??
             new List<CreateRequirementFieldRequest>();
 
-        foreach (var field in fields)
+        var newFields =
+    fields.Select(field =>
+        new RequirementField
         {
-            requirement.Fields.Add(
-                new RequirementField
-                {
-                    Id = Guid.NewGuid(),
-                    RequirementId = requirement.Id,
-                    FieldKey = field.FieldKey.Trim(),
-                    Label = field.Label.Trim(),
-                    Value = field.Value.Trim(),
-                    IsRequired = field.IsRequired,
-                    SortOrder = field.SortOrder
-                });
+            Id = Guid.NewGuid(),
+            RequirementId = requirement.Id,
+            FieldKey =
+                field.FieldKey.Trim(),
+            Label =
+                field.Label.Trim(),
+            Value =
+                field.Value.Trim(),
+            IsRequired =
+                field.IsRequired,
+            SortOrder =
+                field.SortOrder
+        })
+        .ToList();
+
+        if (newFields.Count > 0)
+        {
+            await _dbContext.RequirementFields
+                .AddRangeAsync(newFields);
         }
 
         if (requirement.Status == "verified")
@@ -271,7 +285,16 @@ public class RequirementLifecycleService
 
         await _dbContext.SaveChangesAsync();
 
-        return MapResponse(requirement);
+        var updatedRequirement =
+            await _dbContext.Requirements
+                .AsNoTracking()
+                .Include(x => x.Fields)
+                .Include(x => x.Images)
+                .SingleAsync(x =>
+                    x.Id == requirementId &&
+                    !x.IsDeleted);
+
+        return MapResponse(updatedRequirement);
     }
 
     private async Task<Requirement> GetOwnedAsync(

@@ -41,9 +41,12 @@ public class KhojMarketDbContext : DbContext
             entity.HasIndex(x => x.ReferenceNo)
                 .IsUnique();
 
-            entity.HasIndex(x => x.Email);
+            entity.HasIndex(x => x.Email)
+               .IsUnique();
 
-            entity.HasIndex(x => x.Phone);
+            entity.HasIndex(x => x.Phone)
+                .IsUnique()
+                .HasFilter("[Phone] IS NOT NULL");
 
             entity.Property(x => x.ReferenceNo)
                 .HasMaxLength(50);

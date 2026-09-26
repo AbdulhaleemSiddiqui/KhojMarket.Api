@@ -131,6 +131,136 @@ public class RequirementService
             throw;
         }
     }
+
+    public async Task<RequirementResponse> DeleteImageAsync(
+    Guid userId,
+    Guid requirementId,
+    Guid imageId)
+    {
+        var requirement =
+            await _dbContext.Requirements
+                .Include(x => x.Fields)
+                .Include(x => x.Images)
+                .SingleOrDefaultAsync(x =>
+                    x.Id == requirementId &&
+                    !x.IsDeleted);
+
+        if (requirement is null)
+        {
+            throw new KeyNotFoundException(
+                "Requirement not found.");
+        }
+
+        if (requirement.UserId != userId)
+        {
+            throw new UnauthorizedAccessException(
+                "You cannot delete images from this requirement.");
+        }
+
+        if (requirement.Status == "completed")
+        {
+            throw new InvalidOperationException(
+                "Completed requirement cannot be edited.");
+        }
+
+        var image =
+            requirement.Images
+                .SingleOrDefault(x =>
+                    x.Id == imageId);
+
+        if (image is null)
+        {
+            throw new KeyNotFoundException(
+                "Requirement image not found.");
+        }
+
+        // Requirement must always keep at least one image.
+        if (requirement.Images.Count <= 1)
+        {
+            throw new InvalidOperationException(
+                "At least one image is required.");
+        }
+
+        var deletedFilePath =
+            image.FilePath;
+
+        var wasCover =
+            image.IsCover;
+
+        _dbContext.RequirementImages.Remove(
+            image);
+
+        requirement.Images.Remove(
+            image);
+
+        // If cover image was removed,
+        // make first remaining image the cover.
+        if (wasCover)
+        {
+            var newCover =
+                requirement.Images
+                    .OrderBy(x => x.SortOrder)
+                    .First();
+
+            newCover.IsCover = true;
+        }
+
+        // Normalize sort order.
+        var orderedImages =
+            requirement.Images
+                .OrderBy(x => x.SortOrder)
+                .ToList();
+
+        for (
+            var index = 0;
+            index < orderedImages.Count;
+            index++)
+        {
+            orderedImages[index].SortOrder =
+                index;
+        }
+
+        // Editing verified/rejected requirement
+        // requires admin review again.
+        if (
+            requirement.Status == "verified" ||
+            requirement.Status == "rejected")
+        {
+            requirement.Status =
+                "admin_review_required";
+
+            requirement.VerificationMethod =
+                null;
+
+            requirement.VerifiedAt =
+                null;
+
+            requirement.AdminApprovedBy =
+                null;
+
+            requirement.AdminApprovedAt =
+                null;
+
+            requirement.RejectionReason =
+                null;
+        }
+
+        requirement.UpdatedAt =
+            DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+
+        // DB save successful hone ke baad
+        // physical file delete karo.
+        DeleteFiles(
+            new[]
+            {
+            deletedFilePath
+            });
+
+        return MapResponse(
+            requirement);
+    }
     private static void ValidateImage(IFormFile image)
     {
         var extension =

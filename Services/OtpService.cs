@@ -10,9 +10,9 @@ namespace KhojMarket.Api.Services;
 public class OtpService
 {
     private const int ExpiryMinutes = 5;
-    private readonly ISmsService _smsService;
     private const int MaxFailedAttempts = 5;
 
+    private readonly ISmsService _smsService;
     private readonly KhojMarketDbContext _dbContext;
     private readonly IWebHostEnvironment _environment;
 
@@ -38,26 +38,42 @@ public class OtpService
             throw new KeyNotFoundException("User not found.");
         }
 
-        var phone = NormalizePhone(request.Phone);
-
-        if (string.IsNullOrWhiteSpace(phone))
-        {
-            throw new InvalidOperationException(
-                "Valid phone number is required.");
-        }
-
         if (user.PhoneVerified)
         {
             throw new InvalidOperationException(
                 "Phone number is already verified.");
         }
 
+        // IMPORTANT:
+        // OTP always goes to the phone saved during registration.
+        // Do not allow this endpoint to change the account phone.
+        var phone = NormalizePhone(user.Phone);
+
+        if (string.IsNullOrWhiteSpace(phone))
+        {
+            throw new InvalidOperationException(
+                "No phone number is registered with this account.");
+        }
+
+        // Extra protection in case old duplicate data exists.
+        var duplicatePhoneExists =
+            await _dbContext.Users.AnyAsync(x =>
+                x.Id != userId &&
+                x.Phone == phone);
+
+        if (duplicatePhoneExists)
+        {
+            throw new InvalidOperationException(
+                "This phone number is already linked with another account.");
+        }
+
         // Invalidate previous unused OTPs.
-        var previousOtps = await _dbContext.PhoneOtps
-            .Where(x =>
-                x.UserId == userId &&
-                x.UsedAt == null)
-            .ToListAsync();
+        var previousOtps =
+            await _dbContext.PhoneOtps
+                .Where(x =>
+                    x.UserId == userId &&
+                    x.UsedAt == null)
+                .ToListAsync();
 
         foreach (var previousOtp in previousOtps)
         {
@@ -69,7 +85,8 @@ public class OtpService
             .ToString();
 
         var expiresAt =
-            DateTime.UtcNow.AddMinutes(ExpiryMinutes);
+            DateTime.UtcNow.AddMinutes(
+                ExpiryMinutes);
 
         var otp = new PhoneOtp
         {
@@ -81,7 +98,7 @@ public class OtpService
             FailedAttempts = 0
         };
 
-        // Phone becomes the account phone being verified.
+        // Keep normalized registered number.
         user.Phone = phone;
         user.UpdatedAt = DateTime.UtcNow;
 
@@ -89,15 +106,16 @@ public class OtpService
 
         await _dbContext.SaveChangesAsync();
 
-        // Later:
-         await _smsService.SendOtpAsync(phone, code);
+        await _smsService.SendOtpAsync(
+            phone,
+            code);
 
         return new SendOtpResponse
         {
             Message = "OTP sent successfully.",
             ExpiresAt = expiresAt,
 
-            // NEVER return OTP in production.
+            // Never expose OTP outside Development.
             DevelopmentOtp =
                 _environment.IsDevelopment()
                     ? code
@@ -114,7 +132,8 @@ public class OtpService
 
         if (user is null)
         {
-            throw new KeyNotFoundException("User not found.");
+            throw new KeyNotFoundException(
+                "User not found.");
         }
 
         if (user.PhoneVerified)
@@ -122,12 +141,30 @@ public class OtpService
             return MapUser(user);
         }
 
-        var otp = await _dbContext.PhoneOtps
-            .Where(x =>
-                x.UserId == userId &&
-                x.UsedAt == null)
-            .OrderByDescending(x => x.CreatedAt)
-            .FirstOrDefaultAsync();
+        if (string.IsNullOrWhiteSpace(
+            request.Code))
+        {
+            throw new InvalidOperationException(
+                "OTP is required.");
+        }
+
+        var code = request.Code.Trim();
+
+        if (code.Length != 6 ||
+            !code.All(char.IsDigit))
+        {
+            throw new InvalidOperationException(
+                "Please enter a valid 6 digit OTP.");
+        }
+
+        var otp =
+            await _dbContext.PhoneOtps
+                .Where(x =>
+                    x.UserId == userId &&
+                    x.UsedAt == null)
+                .OrderByDescending(
+                    x => x.CreatedAt)
+                .FirstOrDefaultAsync();
 
         if (otp is null)
         {
@@ -135,41 +172,53 @@ public class OtpService
                 "No active OTP found. Please request a new OTP.");
         }
 
-        if (otp.ExpiresAt <= DateTime.UtcNow)
+        if (otp.ExpiresAt <=
+            DateTime.UtcNow)
         {
-            otp.UsedAt = DateTime.UtcNow;
+            otp.UsedAt =
+                DateTime.UtcNow;
 
-            await _dbContext.SaveChangesAsync();
+            await _dbContext
+                .SaveChangesAsync();
 
             throw new InvalidOperationException(
                 "OTP has expired. Please request a new OTP.");
         }
 
-        if (otp.FailedAttempts >= MaxFailedAttempts)
+        if (otp.FailedAttempts >=
+            MaxFailedAttempts)
         {
-            otp.UsedAt = DateTime.UtcNow;
+            otp.UsedAt =
+                DateTime.UtcNow;
 
-            await _dbContext.SaveChangesAsync();
+            await _dbContext
+                .SaveChangesAsync();
 
             throw new InvalidOperationException(
                 "Too many failed attempts. Please request a new OTP.");
         }
 
         var suppliedHash =
-            HashCode(request.Code.Trim());
+            HashCode(code);
 
-        if (!CryptographicOperations.FixedTimeEquals(
-            Encoding.UTF8.GetBytes(otp.CodeHash),
-            Encoding.UTF8.GetBytes(suppliedHash)))
+        if (!CryptographicOperations
+            .FixedTimeEquals(
+                Encoding.UTF8.GetBytes(
+                    otp.CodeHash),
+                Encoding.UTF8.GetBytes(
+                    suppliedHash)))
         {
             otp.FailedAttempts++;
 
-            if (otp.FailedAttempts >= MaxFailedAttempts)
+            if (otp.FailedAttempts >=
+                MaxFailedAttempts)
             {
-                otp.UsedAt = DateTime.UtcNow;
+                otp.UsedAt =
+                    DateTime.UtcNow;
             }
 
-            await _dbContext.SaveChangesAsync();
+            await _dbContext
+                .SaveChangesAsync();
 
             throw new InvalidOperationException(
                 "Invalid OTP.");
@@ -185,36 +234,67 @@ public class OtpService
         return MapUser(user);
     }
 
-    private static string HashCode(string code)
+    private static string HashCode(
+        string code)
     {
         var bytes =
             SHA256.HashData(
-                Encoding.UTF8.GetBytes(code));
+                Encoding.UTF8.GetBytes(
+                    code));
 
-        return Convert.ToHexString(bytes);
+        return Convert.ToHexString(
+            bytes);
     }
 
-    private static string NormalizePhone(string phone)
+    private static string? NormalizePhone(
+        string? value)
     {
-        var value = phone
-            .Trim()
-            .Replace(" ", "")
-            .Replace("-", "");
-
-        // Pakistan normalization
-        if (value.StartsWith("03"))
+        if (string.IsNullOrWhiteSpace(
+            value))
         {
-            value = "+92" + value[1..];
-        }
-        else if (value.StartsWith("92"))
-        {
-            value = "+" + value;
+            return null;
         }
 
-        return value;
+        var trimmed = value.Trim();
+
+        var digits = new string(
+            trimmed
+                .Where(char.IsDigit)
+                .ToArray());
+
+        if (string.IsNullOrWhiteSpace(
+            digits))
+        {
+            return null;
+        }
+
+        if (trimmed.StartsWith("+"))
+        {
+            return $"+{digits}";
+        }
+
+        if (trimmed.StartsWith("00"))
+        {
+            return $"+{digits[2..]}";
+        }
+
+        if (digits.StartsWith("03") &&
+            digits.Length == 11)
+        {
+            return $"+92{digits[1..]}";
+        }
+
+        if (digits.StartsWith("92"))
+        {
+            return $"+{digits}";
+        }
+
+        throw new InvalidOperationException(
+            "Please enter the phone number with country code, for example +923001234567.");
     }
 
-    private static AuthUserResponse MapUser(User user)
+    private static AuthUserResponse MapUser(
+        User user)
     {
         return new AuthUserResponse
         {
@@ -224,7 +304,8 @@ public class OtpService
             Email = user.Email,
             Phone = user.Phone,
             Role = user.Role,
-            PhoneVerified = user.PhoneVerified,
+            PhoneVerified =
+                user.PhoneVerified,
             SellerVerificationStatus =
                 user.SellerVerificationStatus
         };

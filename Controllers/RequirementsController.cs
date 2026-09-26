@@ -28,6 +28,10 @@ public class RequirementsController : ControllerBase
         _requirementLifecycleService = requirementLifecycleService;
         _marketplaceDealService = marketplaceDealService;
     }
+
+
+
+
     [HttpGet("{requirementId:guid}")]
     [AllowAnonymous]
     public async Task<IActionResult> GetDetails(
@@ -71,6 +75,60 @@ public class RequirementsController : ControllerBase
                 {
                     message = ex.Message
                 });
+        }
+    }
+
+
+    [HttpDelete("{requirementId:guid}/images/{imageId:guid}")]
+    [Authorize(Roles = "buyer")]
+    public async Task<IActionResult> DeleteImage(
+        Guid requirementId,
+        Guid imageId)
+    {
+        var userIdValue =
+            User.FindFirstValue(
+                ClaimTypes.NameIdentifier);
+
+        if (!Guid.TryParse(
+            userIdValue,
+            out var userId))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var result =
+                await _requirementService
+                    .DeleteImageAsync(
+                        userId,
+                        requirementId,
+                        imageId);
+
+            return Ok(result);
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(new
+            {
+                message = exception.Message
+            });
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return StatusCode(
+                StatusCodes.Status403Forbidden,
+                new
+                {
+                    message = exception.Message
+                });
+        }
+        catch (InvalidOperationException exception)
+        {
+            return BadRequest(new
+            {
+                message = exception.Message
+            });
         }
     }
 
