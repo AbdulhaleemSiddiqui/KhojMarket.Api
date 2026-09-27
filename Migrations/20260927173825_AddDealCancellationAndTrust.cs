@@ -19,24 +19,15 @@ namespace KhojMarket.Api.Migrations
                 name: "IX_Users_Phone",
                 table: "Users");
 
-            migrationBuilder.AddColumn<string>(
-                name: "BlockReason",
-                table: "Users",
-                type: "nvarchar(max)",
-                nullable: true);
-
-            migrationBuilder.AddColumn<DateTime>(
-                name: "BlockedAt",
-                table: "Users",
-                type: "datetime2",
-                nullable: true);
-
-            migrationBuilder.AddColumn<bool>(
-                name: "IsBlocked",
-                table: "Users",
-                type: "bit",
-                nullable: false,
-                defaultValue: false);
+            // These columns may already exist in databases updated before this migration.
+            migrationBuilder.Sql("""
+                IF COL_LENGTH(N'dbo.Users', N'BlockReason') IS NULL
+                    ALTER TABLE [dbo].[Users] ADD [BlockReason] nvarchar(max) NULL;
+                IF COL_LENGTH(N'dbo.Users', N'BlockedAt') IS NULL
+                    ALTER TABLE [dbo].[Users] ADD [BlockedAt] datetime2 NULL;
+                IF COL_LENGTH(N'dbo.Users', N'IsBlocked') IS NULL
+                    ALTER TABLE [dbo].[Users] ADD [IsBlocked] bit NOT NULL CONSTRAINT [DF_Users_IsBlocked] DEFAULT (0);
+                """);
 
             migrationBuilder.AlterColumn<DateTime>(
                 name: "CompletedAt",
@@ -206,17 +197,7 @@ namespace KhojMarket.Api.Migrations
                 name: "IX_Users_Phone",
                 table: "Users");
 
-            migrationBuilder.DropColumn(
-                name: "BlockReason",
-                table: "Users");
-
-            migrationBuilder.DropColumn(
-                name: "BlockedAt",
-                table: "Users");
-
-            migrationBuilder.DropColumn(
-                name: "IsBlocked",
-                table: "Users");
+            // Preserve User block fields: they may predate this migration.
 
             migrationBuilder.DropColumn(
                 name: "BuyerConfirmedAt",
