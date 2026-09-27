@@ -51,72 +51,41 @@ namespace KhojMarket.Api.Migrations
                     ALTER TABLE [dbo].[MarketplaceDeals] ADD [SellerConfirmedAt] datetime2 NULL;
                 """);
 
-            migrationBuilder.CreateTable(
-                name: "MarketplaceComplaints",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ReporterUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ReportedUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    DealId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    Category = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    Details = table.Column<string>(type: "nvarchar(1500)", maxLength: 1500, nullable: false),
-                    Status = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
-                    AdminNote = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
-                    ReviewedByUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    ReviewedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_MarketplaceComplaints", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_MarketplaceComplaints_MarketplaceDeals_DealId",
-                        column: x => x.DealId,
-                        principalTable: "MarketplaceDeals",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_MarketplaceComplaints_Users_ReportedUserId",
-                        column: x => x.ReportedUserId,
-                        principalTable: "Users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_MarketplaceComplaints_Users_ReporterUserId",
-                        column: x => x.ReporterUserId,
-                        principalTable: "Users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "UserWarnings",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ComplaintId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Reason = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
-                    IssuedByUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_UserWarnings", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_UserWarnings_MarketplaceComplaints_ComplaintId",
-                        column: x => x.ComplaintId,
-                        principalTable: "MarketplaceComplaints",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_UserWarnings_Users_UserId",
-                        column: x => x.UserId,
-                        principalTable: "Users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                });
+            // Keep existing complaint and warning records in databases with earlier schema changes.
+            migrationBuilder.Sql("""
+                IF OBJECT_ID(N'dbo.MarketplaceComplaints', N'U') IS NULL
+                BEGIN
+                    CREATE TABLE [dbo].[MarketplaceComplaints] (
+                        [Id] uniqueidentifier NOT NULL CONSTRAINT [PK_MarketplaceComplaints] PRIMARY KEY,
+                        [ReporterUserId] uniqueidentifier NOT NULL,
+                        [ReportedUserId] uniqueidentifier NOT NULL,
+                        [DealId] uniqueidentifier NULL,
+                        [Category] nvarchar(50) NOT NULL,
+                        [Details] nvarchar(1500) NOT NULL,
+                        [Status] nvarchar(30) NOT NULL,
+                        [AdminNote] nvarchar(1000) NULL,
+                        [ReviewedByUserId] uniqueidentifier NULL,
+                        [ReviewedAt] datetime2 NULL,
+                        [CreatedAt] datetime2 NOT NULL,
+                        CONSTRAINT [FK_MarketplaceComplaints_MarketplaceDeals_DealId] FOREIGN KEY ([DealId]) REFERENCES [dbo].[MarketplaceDeals] ([Id]),
+                        CONSTRAINT [FK_MarketplaceComplaints_Users_ReportedUserId] FOREIGN KEY ([ReportedUserId]) REFERENCES [dbo].[Users] ([Id]),
+                        CONSTRAINT [FK_MarketplaceComplaints_Users_ReporterUserId] FOREIGN KEY ([ReporterUserId]) REFERENCES [dbo].[Users] ([Id])
+                    );
+                END;
+                IF OBJECT_ID(N'dbo.UserWarnings', N'U') IS NULL
+                BEGIN
+                    CREATE TABLE [dbo].[UserWarnings] (
+                        [Id] uniqueidentifier NOT NULL CONSTRAINT [PK_UserWarnings] PRIMARY KEY,
+                        [UserId] uniqueidentifier NOT NULL,
+                        [ComplaintId] uniqueidentifier NOT NULL,
+                        [Reason] nvarchar(1000) NOT NULL,
+                        [IssuedByUserId] uniqueidentifier NOT NULL,
+                        [CreatedAt] datetime2 NOT NULL,
+                        CONSTRAINT [FK_UserWarnings_MarketplaceComplaints_ComplaintId] FOREIGN KEY ([ComplaintId]) REFERENCES [dbo].[MarketplaceComplaints] ([Id]),
+                        CONSTRAINT [FK_UserWarnings_Users_UserId] FOREIGN KEY ([UserId]) REFERENCES [dbo].[Users] ([Id])
+                    );
+                END;
+                """);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Users_Email",
@@ -132,46 +101,27 @@ namespace KhojMarket.Api.Migrations
                 unique: true,
                 filter: "[Phone] IS NOT NULL");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_MarketplaceComplaints_DealId",
-                table: "MarketplaceComplaints",
-                column: "DealId");
+            migrationBuilder.Sql("""
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.MarketplaceComplaints') AND name = N'IX_MarketplaceComplaints_DealId')
+                    CREATE INDEX [IX_MarketplaceComplaints_DealId] ON [dbo].[MarketplaceComplaints] ([DealId]);
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.MarketplaceComplaints') AND name = N'IX_MarketplaceComplaints_ReportedUserId')
+                    CREATE INDEX [IX_MarketplaceComplaints_ReportedUserId] ON [dbo].[MarketplaceComplaints] ([ReportedUserId]);
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.MarketplaceComplaints') AND name = N'IX_MarketplaceComplaints_ReporterUserId')
+                    CREATE INDEX [IX_MarketplaceComplaints_ReporterUserId] ON [dbo].[MarketplaceComplaints] ([ReporterUserId]);
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.MarketplaceComplaints') AND name = N'IX_MarketplaceComplaints_Status')
+                    CREATE INDEX [IX_MarketplaceComplaints_Status] ON [dbo].[MarketplaceComplaints] ([Status]);
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.UserWarnings') AND name = N'IX_UserWarnings_ComplaintId')
+                    CREATE UNIQUE INDEX [IX_UserWarnings_ComplaintId] ON [dbo].[UserWarnings] ([ComplaintId]);
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.UserWarnings') AND name = N'IX_UserWarnings_UserId')
+                    CREATE INDEX [IX_UserWarnings_UserId] ON [dbo].[UserWarnings] ([UserId]);
+                """);
 
-            migrationBuilder.CreateIndex(
-                name: "IX_MarketplaceComplaints_ReportedUserId",
-                table: "MarketplaceComplaints",
-                column: "ReportedUserId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_MarketplaceComplaints_ReporterUserId",
-                table: "MarketplaceComplaints",
-                column: "ReporterUserId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_MarketplaceComplaints_Status",
-                table: "MarketplaceComplaints",
-                column: "Status");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_UserWarnings_ComplaintId",
-                table: "UserWarnings",
-                column: "ComplaintId",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_UserWarnings_UserId",
-                table: "UserWarnings",
-                column: "UserId");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "UserWarnings");
-
-            migrationBuilder.DropTable(
-                name: "MarketplaceComplaints");
+            // Preserve complaint and warning tables, which may predate this migration.
 
             migrationBuilder.DropIndex(
                 name: "IX_Users_Email",
