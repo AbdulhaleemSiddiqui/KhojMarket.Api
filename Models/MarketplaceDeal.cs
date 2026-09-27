@@ -24,5 +24,11 @@ public class MarketplaceDeal
 
     public DateTime? CompletedAt { get; set; }
 
+    public DateTime? CancelledAt { get; set; }
+
+    public Guid? CancelledByUserId { get; set; }
+
+    public string? CancellationReason { get; set; }
+
     public DateTime CreatedAt { get; set; }
 }
