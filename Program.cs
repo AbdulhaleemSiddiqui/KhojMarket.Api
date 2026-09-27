@@ -153,6 +153,20 @@ builder.Services.AddScoped<MarketplaceDealService>();
 builder.Services.AddScoped<MarketplaceReviewService>();
 builder.Services.AddScoped<SellerVerificationService>();
 builder.Services.AddScoped<AdminDashboardService>();
+var openAiEnabled =
+    builder.Configuration.GetValue<bool>(
+        "OpenAI:Enabled");
+
+if (openAiEnabled)
+{
+    builder.Services.AddHttpClient<IAiRequirementService, OpenAiRequirementService>();
+}
+else
+{
+    // Safe default: no API key/billing required. Enable real AI explicitly
+    // with OpenAI:Enabled=true after production rate limiting is configured.
+    builder.Services.AddScoped<IAiRequirementService, DevelopmentAiRequirementService>();
+}
 builder.Services.AddHealthChecks();
 builder.Services.AddScoped<
     IBuyerInquiryNotificationService,
