@@ -153,14 +153,19 @@ builder.Services.AddScoped<MarketplaceDealService>();
 builder.Services.AddScoped<MarketplaceReviewService>();
 builder.Services.AddScoped<SellerVerificationService>();
 builder.Services.AddScoped<AdminDashboardService>();
-if (builder.Environment.IsDevelopment())
+var openAiEnabled =
+    builder.Configuration.GetValue<bool>(
+        "OpenAI:Enabled");
+
+if (openAiEnabled)
 {
-    // Keyless local testing. Production keeps the real OpenAI implementation.
-    builder.Services.AddScoped<IAiRequirementService, DevelopmentAiRequirementService>();
+    builder.Services.AddHttpClient<IAiRequirementService, OpenAiRequirementService>();
 }
 else
 {
-    builder.Services.AddHttpClient<IAiRequirementService, OpenAiRequirementService>();
+    // Safe default: no API key/billing required. Enable real AI explicitly
+    // with OpenAI:Enabled=true after production rate limiting is configured.
+    builder.Services.AddScoped<IAiRequirementService, DevelopmentAiRequirementService>();
 }
 builder.Services.AddHealthChecks();
 builder.Services.AddScoped<
