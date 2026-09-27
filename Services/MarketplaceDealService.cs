@@ -240,6 +240,49 @@ public class MarketplaceDealService
         return await GetDealAsync(deal.Id);
     }
 
+    public async Task<MarketplaceDealResponse> CancelAsync(
+        Guid currentUserId,
+        Guid dealId,
+        CancelMarketplaceDealRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Reason))
+            throw new InvalidOperationException("Cancellation reason is required.");
+
+        var reason = request.Reason.Trim();
+        if (reason.Length > 1000)
+            throw new InvalidOperationException("Cancellation reason cannot exceed 1000 characters.");
+
+        var deal = await _dbContext.MarketplaceDeals
+            .Include(x => x.Requirement)
+            .SingleOrDefaultAsync(x => x.Id == dealId);
+
+        if (deal is null)
+            throw new KeyNotFoundException("Deal not found.");
+
+        if (currentUserId != deal.BuyerUserId && currentUserId != deal.SellerUserId)
+            throw new UnauthorizedAccessException("You cannot cancel this deal.");
+
+        if (deal.Status == "completed")
+            throw new InvalidOperationException("A completed deal cannot be cancelled.");
+
+        if (deal.Status == "cancelled")
+            return await GetDealAsync(deal.Id);
+
+        var now = DateTime.UtcNow;
+        deal.Status = "cancelled";
+        deal.CancelledAt = now;
+        deal.CancelledByUserId = currentUserId;
+        deal.CancellationReason = reason;
+
+        // A cancelled marketplace deal closes this accepted transaction,
+        // but it is not treated as a successful completed deal/review.
+        deal.Requirement.ActivityStatus = "inactive";
+        deal.Requirement.UpdatedAt = now;
+
+        await _dbContext.SaveChangesAsync();
+        return await GetDealAsync(deal.Id);
+    }
+
     public async Task<MarketplaceDealResponse>
         GetDealAsync(
             Guid dealId)
@@ -286,7 +329,16 @@ public class MarketplaceDealService
                             x.SellerConfirmedAt,
 
                         CompletedAt =
-                            x.CompletedAt
+                            x.CompletedAt,
+
+                        CancelledAt =
+                            x.CancelledAt,
+
+                        CancelledByUserId =
+                            x.CancelledByUserId,
+
+                        CancellationReason =
+                            x.CancellationReason
                     })
                 .SingleOrDefaultAsync();
 
@@ -349,7 +401,16 @@ public class MarketplaceDealService
                             x.SellerConfirmedAt,
 
                         CompletedAt =
-                            x.CompletedAt
+                            x.CompletedAt,
+
+                        CancelledAt =
+                            x.CancelledAt,
+
+                        CancelledByUserId =
+                            x.CancelledByUserId,
+
+                        CancellationReason =
+                            x.CancellationReason
                 })
             .SingleOrDefaultAsync();
     }
