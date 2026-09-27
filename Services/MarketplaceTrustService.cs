@@ -39,11 +39,14 @@ public class MarketplaceTrustService
         return await GetAsync(complaint.Id);
     }
 
-    public Task<List<MarketplaceComplaintResponse>> GetAdminComplaintsAsync(string? status) =>
-        _db.MarketplaceComplaints.AsNoTracking()
+    public async Task<List<MarketplaceComplaintResponse>> GetAdminComplaintsAsync(string? status)
+    {
+        var items = await _db.MarketplaceComplaints.AsNoTracking()
+            .Include(x => x.ReporterUser).Include(x => x.ReportedUser)
             .Where(x => string.IsNullOrWhiteSpace(status) || status == "all" || x.Status == status)
-            .OrderByDescending(x => x.CreatedAt)
-            .Select(x => Map(x)).ToListAsync();
+            .OrderByDescending(x => x.CreatedAt).ToListAsync();
+        return items.Select(Map).ToList();
+    }
 
     public async Task<MarketplaceComplaintResponse> ConfirmWarningAsync(Guid adminId, Guid complaintId, ReviewMarketplaceComplaintRequest request)
     {
@@ -102,8 +105,13 @@ public class MarketplaceTrustService
         await _db.SaveChangesAsync();
     }
 
-    private async Task<MarketplaceComplaintResponse> GetAsync(Guid id) =>
-        await _db.MarketplaceComplaints.AsNoTracking().Where(x=>x.Id==id).Select(x=>Map(x)).SingleAsync();
+    private async Task<MarketplaceComplaintResponse> GetAsync(Guid id)
+    {
+        var item = await _db.MarketplaceComplaints.AsNoTracking()
+            .Include(x => x.ReporterUser).Include(x => x.ReportedUser)
+            .SingleAsync(x => x.Id == id);
+        return Map(item);
+    }
 
     private static MarketplaceComplaintResponse Map(MarketplaceComplaint x) => new()
     {
