@@ -152,10 +152,13 @@ public class MarketplaceDealService
                     inquiry.Id,
 
                 Status =
-                    "completed",
+                    "pending_confirmation",
+
+                BuyerConfirmedAt =
+                    now,
 
                 CompletedAt =
-                    now,
+                    null,
 
                 CreatedAt =
                     now
@@ -170,20 +173,10 @@ public class MarketplaceDealService
             _dbContext.MarketplaceDeals.Add(
                 deal);
 
-            requirement.Status =
-                "completed";
-
-            requirement.ActivityStatus =
-                "inactive";
-
+            // KhojMarket seller deals require both parties to confirm.
+            // Keep the requirement active until the seller confirms completion.
             requirement.CompletionReason =
                 request.Reason.Trim();
-
-            requirement.CompletedSellerUserId =
-                inquiry.SellerUserId;
-
-            requirement.CompletedAt =
-                now;
 
             requirement.UpdatedAt =
                 now;
@@ -200,6 +193,51 @@ public class MarketplaceDealService
 
         return await GetDealAsync(
             deal.Id);
+    }
+
+
+    public async Task<MarketplaceDealResponse> ConfirmSellerCompletionAsync(
+        Guid sellerUserId,
+        Guid dealId)
+    {
+        var deal = await _dbContext.MarketplaceDeals
+            .Include(x => x.Requirement)
+            .SingleOrDefaultAsync(x => x.Id == dealId);
+
+        if (deal is null)
+        {
+            throw new KeyNotFoundException("Deal not found.");
+        }
+
+        if (deal.SellerUserId != sellerUserId)
+        {
+            throw new UnauthorizedAccessException("You cannot confirm this deal.");
+        }
+
+        if (!deal.BuyerConfirmedAt.HasValue)
+        {
+            throw new InvalidOperationException("Buyer confirmation is required first.");
+        }
+
+        if (deal.Status == "completed")
+        {
+            return await GetDealAsync(deal.Id);
+        }
+
+        var now = DateTime.UtcNow;
+        deal.SellerConfirmedAt = now;
+        deal.CompletedAt = now;
+        deal.Status = "completed";
+
+        deal.Requirement.Status = "completed";
+        deal.Requirement.ActivityStatus = "inactive";
+        deal.Requirement.CompletedSellerUserId = deal.SellerUserId;
+        deal.Requirement.CompletedAt = now;
+        deal.Requirement.UpdatedAt = now;
+
+        await _dbContext.SaveChangesAsync();
+
+        return await GetDealAsync(deal.Id);
     }
 
     public async Task<MarketplaceDealResponse>
@@ -240,6 +278,12 @@ public class MarketplaceDealService
 
                         Status =
                             x.Status,
+
+                        BuyerConfirmedAt =
+                            x.BuyerConfirmedAt,
+
+                        SellerConfirmedAt =
+                            x.SellerConfirmedAt,
 
                         CompletedAt =
                             x.CompletedAt
@@ -296,10 +340,16 @@ public class MarketplaceDealService
                         x.InquiryId,
 
                     Status =
-                        x.Status,
+                            x.Status,
 
-                    CompletedAt =
-                        x.CompletedAt
+                        BuyerConfirmedAt =
+                            x.BuyerConfirmedAt,
+
+                        SellerConfirmedAt =
+                            x.SellerConfirmedAt,
+
+                        CompletedAt =
+                            x.CompletedAt
                 })
             .SingleOrDefaultAsync();
     }
