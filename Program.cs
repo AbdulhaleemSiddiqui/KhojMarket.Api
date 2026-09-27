@@ -151,6 +151,7 @@ builder.Services.AddScoped<SellerInquiryService>();
 builder.Services.AddScoped<SellerCreditService>();
 builder.Services.AddScoped<MarketplaceDealService>();
 builder.Services.AddScoped<MarketplaceReviewService>();
+builder.Services.AddScoped<MarketplaceTrustService>();
 builder.Services.AddScoped<SellerVerificationService>();
 builder.Services.AddScoped<AdminDashboardService>();
 var openAiEnabled =
