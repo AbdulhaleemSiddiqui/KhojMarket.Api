@@ -25,4 +25,10 @@ public class MarketplaceDealResponse
     public DateTime? SellerConfirmedAt { get; set; }
 
     public DateTime? CompletedAt { get; set; }
+
+    public DateTime? CancelledAt { get; set; }
+
+    public Guid? CancelledByUserId { get; set; }
+
+    public string? CancellationReason { get; set; }
 }
