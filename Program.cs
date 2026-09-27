@@ -153,7 +153,15 @@ builder.Services.AddScoped<MarketplaceDealService>();
 builder.Services.AddScoped<MarketplaceReviewService>();
 builder.Services.AddScoped<SellerVerificationService>();
 builder.Services.AddScoped<AdminDashboardService>();
-builder.Services.AddHttpClient<IAiRequirementService, OpenAiRequirementService>();
+if (builder.Environment.IsDevelopment())
+{
+    // Keyless local testing. Production keeps the real OpenAI implementation.
+    builder.Services.AddScoped<IAiRequirementService, DevelopmentAiRequirementService>();
+}
+else
+{
+    builder.Services.AddHttpClient<IAiRequirementService, OpenAiRequirementService>();
+}
 builder.Services.AddHealthChecks();
 builder.Services.AddScoped<
     IBuyerInquiryNotificationService,
