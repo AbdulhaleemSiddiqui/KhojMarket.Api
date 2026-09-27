@@ -16,9 +16,13 @@ public class MarketplaceDeal
     public Guid InquiryId { get; set; }
     public SellerInquiry Inquiry { get; set; } = null!;
 
-    public string Status { get; set; } = "completed";
+    public string Status { get; set; } = "pending_confirmation";
 
-    public DateTime CompletedAt { get; set; }
+    public DateTime? BuyerConfirmedAt { get; set; }
+
+    public DateTime? SellerConfirmedAt { get; set; }
+
+    public DateTime? CompletedAt { get; set; }
 
     public DateTime CreatedAt { get; set; }
 }
