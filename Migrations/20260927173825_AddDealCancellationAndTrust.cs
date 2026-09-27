@@ -37,35 +37,19 @@ namespace KhojMarket.Api.Migrations
                 oldClrType: typeof(DateTime),
                 oldType: "datetime2");
 
-            migrationBuilder.AddColumn<DateTime>(
-                name: "BuyerConfirmedAt",
-                table: "MarketplaceDeals",
-                type: "datetime2",
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "CancellationReason",
-                table: "MarketplaceDeals",
-                type: "nvarchar(max)",
-                nullable: true);
-
-            migrationBuilder.AddColumn<DateTime>(
-                name: "CancelledAt",
-                table: "MarketplaceDeals",
-                type: "datetime2",
-                nullable: true);
-
-            migrationBuilder.AddColumn<Guid>(
-                name: "CancelledByUserId",
-                table: "MarketplaceDeals",
-                type: "uniqueidentifier",
-                nullable: true);
-
-            migrationBuilder.AddColumn<DateTime>(
-                name: "SellerConfirmedAt",
-                table: "MarketplaceDeals",
-                type: "datetime2",
-                nullable: true);
+            // Some databases already have completion fields from earlier manual updates.
+            migrationBuilder.Sql("""
+                IF COL_LENGTH(N'dbo.MarketplaceDeals', N'BuyerConfirmedAt') IS NULL
+                    ALTER TABLE [dbo].[MarketplaceDeals] ADD [BuyerConfirmedAt] datetime2 NULL;
+                IF COL_LENGTH(N'dbo.MarketplaceDeals', N'CancellationReason') IS NULL
+                    ALTER TABLE [dbo].[MarketplaceDeals] ADD [CancellationReason] nvarchar(max) NULL;
+                IF COL_LENGTH(N'dbo.MarketplaceDeals', N'CancelledAt') IS NULL
+                    ALTER TABLE [dbo].[MarketplaceDeals] ADD [CancelledAt] datetime2 NULL;
+                IF COL_LENGTH(N'dbo.MarketplaceDeals', N'CancelledByUserId') IS NULL
+                    ALTER TABLE [dbo].[MarketplaceDeals] ADD [CancelledByUserId] uniqueidentifier NULL;
+                IF COL_LENGTH(N'dbo.MarketplaceDeals', N'SellerConfirmedAt') IS NULL
+                    ALTER TABLE [dbo].[MarketplaceDeals] ADD [SellerConfirmedAt] datetime2 NULL;
+                """);
 
             migrationBuilder.CreateTable(
                 name: "MarketplaceComplaints",
@@ -199,25 +183,7 @@ namespace KhojMarket.Api.Migrations
 
             // Preserve User block fields: they may predate this migration.
 
-            migrationBuilder.DropColumn(
-                name: "BuyerConfirmedAt",
-                table: "MarketplaceDeals");
-
-            migrationBuilder.DropColumn(
-                name: "CancellationReason",
-                table: "MarketplaceDeals");
-
-            migrationBuilder.DropColumn(
-                name: "CancelledAt",
-                table: "MarketplaceDeals");
-
-            migrationBuilder.DropColumn(
-                name: "CancelledByUserId",
-                table: "MarketplaceDeals");
-
-            migrationBuilder.DropColumn(
-                name: "SellerConfirmedAt",
-                table: "MarketplaceDeals");
+            // Preserve deal fields because they may have existed before this migration.
 
             migrationBuilder.AlterColumn<DateTime>(
                 name: "CompletedAt",
