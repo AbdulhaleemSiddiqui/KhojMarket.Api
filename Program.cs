@@ -210,6 +210,7 @@ app.UseStaticFiles();
 app.UseMiddleware<KhojMarket.Api.Middleware.GlobalExceptionMiddleware>();
 app.UseCors("Frontend");
 app.UseAuthentication();
+app.UseMiddleware<KhojMarket.Api.Middleware.BlockedUserMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health");
