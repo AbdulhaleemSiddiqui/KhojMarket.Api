@@ -20,6 +20,8 @@ public class KhojMarketDbContext : DbContext
     Set<SellerWallet>();
     public DbSet<MarketplaceReview> MarketplaceReviews =>
     Set<MarketplaceReview>();
+    public DbSet<MarketplaceComplaint> MarketplaceComplaints => Set<MarketplaceComplaint>();
+    public DbSet<UserWarning> UserWarnings => Set<UserWarning>();
 
     public DbSet<CreditTransaction> CreditTransactions =>
         Set<CreditTransaction>();
@@ -274,6 +276,28 @@ public class KhojMarketDbContext : DbContext
             entity.HasIndex(x => x.InquiryId);
 
             entity.HasIndex(x => x.CreatedAt);
+        });
+        modelBuilder.Entity<MarketplaceComplaint>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Category).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.Details).HasMaxLength(1500).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.AdminNote).HasMaxLength(1000);
+            entity.HasIndex(x => x.ReportedUserId);
+            entity.HasIndex(x => x.Status);
+            entity.HasOne(x => x.ReporterUser).WithMany().HasForeignKey(x => x.ReporterUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ReportedUser).WithMany().HasForeignKey(x => x.ReportedUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Deal).WithMany().HasForeignKey(x => x.DealId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<UserWarning>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Reason).HasMaxLength(1000).IsRequired();
+            entity.HasIndex(x => x.UserId);
+            entity.HasIndex(x => x.ComplaintId).IsUnique();
+            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Complaint).WithMany().HasForeignKey(x => x.ComplaintId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<MarketplaceReview>(entity =>
         {

@@ -195,6 +195,11 @@ public class UserService
             return null;
         }
 
+        if (user.IsBlocked)
+        {
+            throw new InvalidOperationException("This account is blocked. Please contact support.");
+        }
+
         var passwordResult =
             _passwordHasher.VerifyHashedPassword(
                 user,

@@ -20,5 +20,15 @@ public class MarketplaceDealResponse
 
     public string Status { get; set; } = string.Empty;
 
-    public DateTime CompletedAt { get; set; }
+    public DateTime? BuyerConfirmedAt { get; set; }
+
+    public DateTime? SellerConfirmedAt { get; set; }
+
+    public DateTime? CompletedAt { get; set; }
+
+    public DateTime? CancelledAt { get; set; }
+
+    public Guid? CancelledByUserId { get; set; }
+
+    public string? CancellationReason { get; set; }
 }

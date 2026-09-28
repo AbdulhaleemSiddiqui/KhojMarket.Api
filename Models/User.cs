@@ -26,6 +26,12 @@ public class User
 
     public DateTime? SellerVerifiedAt { get; set; }
 
+    public bool IsBlocked { get; set; }
+
+    public DateTime? BlockedAt { get; set; }
+
+    public string? BlockReason { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

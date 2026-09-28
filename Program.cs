@@ -151,6 +151,7 @@ builder.Services.AddScoped<SellerInquiryService>();
 builder.Services.AddScoped<SellerCreditService>();
 builder.Services.AddScoped<MarketplaceDealService>();
 builder.Services.AddScoped<MarketplaceReviewService>();
+builder.Services.AddScoped<MarketplaceTrustService>();
 builder.Services.AddScoped<SellerVerificationService>();
 builder.Services.AddScoped<AdminDashboardService>();
 var openAiEnabled =
@@ -209,6 +210,7 @@ app.UseStaticFiles();
 app.UseMiddleware<KhojMarket.Api.Middleware.GlobalExceptionMiddleware>();
 app.UseCors("Frontend");
 app.UseAuthentication();
+app.UseMiddleware<KhojMarket.Api.Middleware.BlockedUserMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health");
