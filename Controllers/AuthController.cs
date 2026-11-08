@@ -11,11 +11,14 @@ namespace KhojMarket.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly UserService _userService;
+    private readonly SellerVerificationService _sellerVerificationService;
 
     public AuthController(
-        UserService userService)
+        UserService userService,
+        SellerVerificationService sellerVerificationService)
     {
         _userService = userService;
+        _sellerVerificationService = sellerVerificationService;
     }
 
     [HttpPost("register")]
@@ -78,6 +81,35 @@ public class AuthController : ControllerBase
         }
 
         return Ok(result);
+    }
+
+    [HttpPost("seller/verification")]
+    [Authorize(Roles = "seller")]
+    public async Task<IActionResult> SubmitSellerVerification(
+        [FromBody] SellerVerificationSubmissionRequest request)
+    {
+        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (!Guid.TryParse(userIdValue, out var sellerUserId))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var result = await _sellerVerificationService
+                .SubmitRequestAsync(sellerUserId, request);
+
+            return Ok(result);
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(new { message = exception.Message });
+        }
+        catch (InvalidOperationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
     }
 
     [HttpGet("me")]
