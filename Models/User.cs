@@ -22,6 +22,12 @@ public class User
 
     public string? SellerVerificationReason { get; set; }
 
+    public string? BusinessName { get; set; }
+
+    public string? BusinessCity { get; set; }
+
+    public string? BusinessCategory { get; set; }
+
     public Guid? SellerVerifiedByUserId { get; set; }
 
     public DateTime? SellerVerifiedAt { get; set; }
