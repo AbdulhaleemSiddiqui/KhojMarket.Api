@@ -250,7 +250,13 @@ public class UserService
                 user.PhoneVerified,
 
             SellerVerificationStatus =
-                user.SellerVerificationStatus
+                user.SellerVerificationStatus,
+
+            BusinessName = user.BusinessName,
+
+            BusinessCity = user.BusinessCity,
+
+            BusinessCategory = user.BusinessCategory
         };
     }
 

@@ -17,4 +17,10 @@ public class AuthUserResponse
     public bool PhoneVerified { get; set; }
 
     public string? SellerVerificationStatus { get; set; }
+
+    public string? BusinessName { get; set; }
+
+    public string? BusinessCity { get; set; }
+
+    public string? BusinessCategory { get; set; }
 }

@@ -14,6 +14,49 @@ public class SellerVerificationService
         _dbContext = dbContext;
     }
 
+    public async Task<AdminSellerResponse>
+        SubmitRequestAsync(
+            Guid sellerUserId,
+            SellerVerificationSubmissionRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.BusinessName) ||
+            string.IsNullOrWhiteSpace(request.City) ||
+            string.IsNullOrWhiteSpace(request.Category))
+        {
+            throw new InvalidOperationException(
+                "Business name, city and category are required.");
+        }
+
+        var seller = await _dbContext.Users
+            .SingleOrDefaultAsync(x =>
+                x.Id == sellerUserId &&
+                x.Role == "seller");
+
+        if (seller is null)
+        {
+            throw new KeyNotFoundException("Seller not found.");
+        }
+
+        if (seller.SellerVerificationStatus == "verified")
+        {
+            throw new InvalidOperationException(
+                "This seller is already verified.");
+        }
+
+        seller.BusinessName = request.BusinessName.Trim();
+        seller.BusinessCity = request.City.Trim();
+        seller.BusinessCategory = request.Category.Trim();
+        seller.SellerVerificationStatus = "pending";
+        seller.SellerVerificationReason = null;
+        seller.SellerVerifiedByUserId = null;
+        seller.SellerVerifiedAt = null;
+        seller.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+
+        return await GetSellerAsync(sellerUserId);
+    }
+
     public async Task<List<AdminSellerResponse>>
         GetPendingSellersAsync()
     {
@@ -31,6 +74,9 @@ public class SellerVerificationService
                 Email = x.Email,
                 Phone = x.Phone,
                 PhoneVerified = x.PhoneVerified,
+                BusinessName = x.BusinessName,
+                BusinessCity = x.BusinessCity,
+                BusinessCategory = x.BusinessCategory,
                 SellerVerificationStatus =
                     x.SellerVerificationStatus,
 
@@ -64,6 +110,10 @@ public class SellerVerificationService
                     Email = x.Email,
                     Phone = x.Phone,
                     PhoneVerified = x.PhoneVerified,
+
+                    BusinessName = x.BusinessName,
+                    BusinessCity = x.BusinessCity,
+                    BusinessCategory = x.BusinessCategory,
 
                     SellerVerificationStatus =
                         x.SellerVerificationStatus,

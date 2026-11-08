@@ -18,6 +18,12 @@ public class AdminSellerResponse
 
     public string? SellerVerificationReason { get; set; }
 
+    public string? BusinessName { get; set; }
+
+    public string? BusinessCity { get; set; }
+
+    public string? BusinessCategory { get; set; }
+
     public DateTime? SellerVerifiedAt { get; set; }
 
     public DateTime CreatedAt { get; set; }
