@@ -56,6 +56,15 @@ public class KhojMarketDbContext : DbContext
 
             entity.Property(x => x.SellerVerificationStatus)
                 .HasMaxLength(30);
+
+            entity.Property(x => x.BusinessName)
+                .HasMaxLength(200);
+
+            entity.Property(x => x.BusinessCity)
+                .HasMaxLength(100);
+
+            entity.Property(x => x.BusinessCategory)
+                .HasMaxLength(100);
         });
         modelBuilder.Entity<RequirementFavorite>(entity =>
         {
